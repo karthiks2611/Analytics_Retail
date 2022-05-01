@@ -1,0 +1,218 @@
+---
+title: "Retail Analytics"
+output: pdf_document
+---
+
+## Loading the Libraries
+```{r}
+rm(list=ls())
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(factoextra)
+```
+
+```{r}
+data <- read.csv('C:\\Users\\Karth\\Desktop\\Sampler\\Superstore.csv')
+head(data)
+```
+
+
+
+```{r}
+data$Order.Date <- as.Date(data$Order.Date,"%d-%m-%Y")
+data$Ship.Date <- as.Date(data$Ship.Date,"%d-%m-%Y")
+```
+
+```{r}
+summary(data)
+
+```
+
+
+```{r}
+str(data)
+```
+
+```{r}
+## Data Cleaning
+drops <- c("Row.ID")
+df <- data[,!(names(data) %in% drops)]
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+## Check for missing values
+which(is.na(df$Order.Date))
+which(is.na(df$Order.ID))
+which(is.na(df$Ship.Date))
+which(is.na(df$Ship.Mode))
+which(is.na(df$Customer.ID))
+which(is.na(df$Customer.Name))
+which(is.na(df$Segment))
+which(is.na(df$Country.Region))
+which(is.na(df$City))
+which(is.na(df$State))
+which(is.na(df$Region))
+which(is.na(df$Product.ID))
+which(is.na(df$Category))
+which(is.na(df$Sub.Category))
+which(is.na(df$Product.Name))
+which(is.na(df$Profit))
+which(is.na(df$Sales))
+which(is.na(df$Quantity))
+which(is.na(df$Discount))
+
+which(is.na(df$Postal.Code))
+```
+## Here, we can see that some columns of postal code have missing values
+
+## Dropping those rows
+```{r}
+exclude <- which(is.na(df$Postal.Code))
+
+df1 <- df[-exclude,]
+
+
+```
+
+
+## Grouping Profit by region
+```{r}
+profit_by_reg <- df1 %>% group_by(Region) %>% summarise_at(vars(Profit),funs(sum(.,na.rm=TRUE)))
+profit_by_reg
+```
+
+## Grouping Sales by region
+```{r}
+sales_by_reg <- df1 %>% group_by(Region) %>% summarise_at(vars(Sales),funs(sum(.,na.rm=TRUE)))
+sales_by_reg
+
+```
+```{r}
+p1 <- ggplot(profit_by_reg, aes(x = Region, y = Profit)) + geom_boxplot()+
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+p1
+
+```
+
+```{r}
+
+#Selecting required Columns
+data_activity = df1[,c("Region","Profit","Sales")]
+
+
+#Finding median profit and sales for different regions
+transactions = data_activity %>% group_by(Region) %>% summarise(median(Profit),median(Sales))
+transactions = as.data.frame(transactions)
+colnames(transactions) = c("Region","Profit","Sales")
+
+
+#Finding clusters using kmeans.Numerical measures used are median sales and median profit 
+kms = kmeans(transactions[,c(2,3)],centers = 2)
+rownames(transactions) = c(transactions$Region)
+
+
+#Visualizing the clusters
+fviz_cluster(kms,data = transactions[,c(2,3)])
+```
+
+
+
+```{r}
+
+#Selecting required Columns
+data_activity1 = df1[,c("Segment","Profit","Sales")]
+
+
+#Finding median profit and sales for different Customer Segment
+transactions1 = data_activity1 %>% group_by(Segment) %>% summarise(median(Profit),median(Sales))
+transactions1 = as.data.frame(transactions1)
+colnames(transactions1) = c("Segment","Profit","Sales")
+```
+
+
+```{r}
+#Finding clusters using kmeans.Numerical measures used are median sales and median profit
+kms1 = kmeans(transactions1[,c(2,3)],centers = 2)
+rownames(transactions1) = c(transactions1$Segment)
+
+
+#Visualizing the clusters
+fviz_cluster(kms1,data = transactions1[,c(2,3)])
+
+
+#Selecting required Columns
+data_activity = df1[,c("Sub.Category","Profit","Sales")]
+
+
+#Finding median profit and sales for different Product Sub Category
+transactions2 = data_activity %>% group_by(Sub.Category) %>% summarise(median(Profit),median(Sales))
+transactions2 = as.data.frame(transactions2)
+colnames(transactions2) = c("Sub.Category","Profit","Sales")
+
+```
+
+
+```{r}
+#Finding clusters using kmeans.Numerical measures used are median sales and median profit
+kms2 = kmeans(transactions2[,c(2,3)],centers = 2)
+rownames(transactions2) = c(transactions2$Sub.Category)
+
+
+#Visualizing the clusters
+fviz_cluster(kms2,data = transactions2[,c(2,3)])
+```
+
+```{r}
+
+df1[c("Year")] = as.numeric(format(df1$Order.Date,format="%Y"))
+df1[c("Month")] = as.numeric(format(df1$Order.Date,format="%m"))
+df1[c("Day")] = as.numeric(format(df1$Order.Date,format="%d"))
+
+df2 = df1[, !(colnames(df1) %in% c("Postal.Code","Product.Name","Product.ID","Row.ID","Ship.Date","Ship.Mode","Ship.Date","Customer.ID","Order.ID","Order.Date"))]
+```
+
+```{r}
+str(df2)
+```
+
+```{r}
+monthly_profit = df2 %>% group_by(Month,Year,Segment) %>% summarise(median(Profit))
+
+colnames(monthly_profit) = c("Month","Year","Segment","Profit")
+
+ggplot(monthly_profit,aes(x = Month,y = Profit,fill = Segment)) + geom_bar(stat="identity")
+
+ggplot(monthly_profit,aes(x = Month,y = Profit,group=1)) + geom_line(aes(color=factor(Segment)))
+
+s <- df2 %>% group_by(Region) %>% summarise_at(vars(Profit),funs(sum(.,na.rm=TRUE)))
+```
+
+```{r}
+newDf <- data.frame(df2)
+```
+
+```{r}
+grouped = newDf %>% group_by(Year, Region) %>% summarise_at(vars(Profit),funs(sum(.,na.rm=TRUE)))
+
+grouped
+
+ggplot(grouped, aes(x=Year, y=Profit, fill=Region)) +
+  geom_bar(stat="identity")
+
+grouped = newDf %>% group_by(Year, Segment) %>% summarise_at(vars(Profit),funs(sum(.,na.rm=TRUE)))
+
+ggplot(grouped, aes(x=Year, y=Profit, fill=Segment)) +
+  geom_bar(stat="identity")
+
+grouped = newDf %>% group_by(Year, Category) %>% summarise_at(vars(Profit),funs(sum(.,na.rm=TRUE)))
+
+ggplot(grouped, aes(x=Year, y=Profit, fill=Category)) +
+  geom_bar(stat="identity")
+
+```
